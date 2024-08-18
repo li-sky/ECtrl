@@ -38,16 +38,200 @@ float GetCurrentInputVoltage();
 #ifdef __cplusplus
 }
 
+#include <array>
+#include <memory>
+
+using RunComplete = bool;
+
 class Action {
     public:
-        virtual ~Action() = default;
-        virtual void Execute() = 0;
+        ~Action() = default;
+        virtual void Initialize(std::array<uint8_t, 8> data, std::shared_ptr<Action> prevAction) = 0;
+        virtual RunComplete Update() = 0;
     private:
         uint8_t command;
-        uint8_t 
 };
 
+class ActionStraightWithDesignatedTime : public Action {
+    public:
+        ActionStraightWithDesignatedTime() = default ;
+        void Initialize(std::array<uint8_t, 8> data, std::shared_ptr<Action> prevAction);
+        RunComplete Update() override;
+    private:
+        int16_t speed;
+        uint32_t time;
+};
+
+class ActionStraightWithDesignatedDistance : public Action {
+    public:
+        ActionStraightWithDesignatedDistance() = default ;
+        void Initialize(std::array<uint8_t, 8> data, std::shared_ptr<Action> prevAction);
+        RunComplete Update() override;
+    private:
+        int16_t speed;
+        int32_t distance;
+};
+
+class ActionStraight : public Action {
+    public:
+        ActionStraight() = default ;
+        void Initialize(std::array<uint8_t, 8> data, std::shared_ptr<Action> prevAction);
+        RunComplete Update() override;
+    private:
+        int16_t speed;
+};
+
+class ActionNeutralRotateWithDesignatedAngle : public Action {
+    public:
+        ActionNeutralRotateWithDesignatedAngle() = default ;
+        void Initialize(std::array<uint8_t, 8> data, std::shared_ptr<Action> prevAction);
+        RunComplete Update() override;
+    private:
+        int16_t speed;
+        int16_t angle;
+};
+
+class ActionNeutralRotateWithDesignatedTime : public Action {
+    public:
+        ActionNeutralRotateWithDesignatedTime() = default ;
+        void Initialize(std::array<uint8_t, 8> data, std::shared_ptr<Action> prevAction);
+        RunComplete Update() override;
+    private:
+        int16_t speed;
+        uint32_t time;
+};
+
+class ActionNeutralRotate : public Action {
+    public:
+        ActionNeutralRotate() = default ;
+        void Initialize(std::array<uint8_t, 8> data, std::shared_ptr<Action> prevAction);
+        RunComplete Update() override;
+    private:
+        int16_t speed;
+};
+
+class ActionPivotTurnWithDesignatedAngle : public Action {
+    public:
+        ActionPivotTurnWithDesignatedAngle() = default ;
+        void Initialize(std::array<uint8_t, 8> data, std::shared_ptr<Action> prevAction);
+        RunComplete Update() override;
+    private:
+        int16_t speed;
+        int16_t angle;
+};
+
+class ActionPivotTurnWithDesignatedTime : public Action {
+    public:
+        ActionPivotTurnWithDesignatedTime() = default ;
+        void Initialize(std::array<uint8_t, 8> data, std::shared_ptr<Action> prevAction);
+        RunComplete Update() override;
+    private:
+        int16_t speed;
+        uint32_t time;
+};
+
+class ActionPivotTurn : public Action {
+    public:
+        ActionPivotTurn() = default ;
+        void Initialize(std::array<uint8_t, 8> data, std::shared_ptr<Action> prevAction);
+        RunComplete Update() override;
+    private:
+        int16_t speed;
+};
+
+class ActionPowerTurnWithDesignatedAngle : public Action {
+    public:
+        ActionPowerTurnWithDesignatedAngle() = default ;
+        void Initialize(std::array<uint8_t, 8> data, std::shared_ptr<Action> prevAction);
+        RunComplete Update() override;
+    private:
+        int16_t speed;
+        int16_t angle;
+};
+
+class ActionPowerTurnWithDesignatedTime : public Action {
+    public:
+        ActionPowerTurnWithDesignatedTime() = default ;
+        void Initialize(std::array<uint8_t, 8> data, std::shared_ptr<Action> prevAction);
+        RunComplete Update() override;
+    private:
+        int16_t speed;
+        uint32_t time;
+};
+
+class ActionPowerTurn : public Action {
+    public:
+        ActionPowerTurn() = default ;
+        void Initialize(std::array<uint8_t, 8> data, std::shared_ptr<Action> prevAction);
+        RunComplete Update() override;
+    private:
+        int16_t speed;
+};
+
+class ActionWritePWMValues: public Action {
+    public:
+        ActionWritePWMValues() = default ;
+        void Initialize(std::array<uint8_t, 8> data, std::shared_ptr<Action> prevAction);
+        RunComplete Update() override;
+    private:
+        int16_t speed[4];
+};
+
+class ActionWriteTargetEncoderValues: public Action {
+    public:
+        ActionWriteTargetEncoderValues() = default ;
+        void Initialize(std::array<uint8_t, 8> data, std::shared_ptr<Action> prevAction);
+        RunComplete Update() override;
+    private:
+        int16_t speed[4];
+};
+
+class ActionFastDecay : public Action {
+    public:
+        ActionFastDecay() = default ;
+        void Initialize(std::array<uint8_t, 8> data, std::shared_ptr<Action> prevAction);
+        RunComplete Update() override;
+};
+
+class ActionSlowDecay : public Action {
+    public:
+        ActionSlowDecay() = default ;
+        void Initialize(std::array<uint8_t, 8> data, std::shared_ptr<Action> prevAction);
+        RunComplete Update() override;
+};
+
+class ActionStop : public Action {
+    public:
+        ActionStop() = default ;
+        void Initialize(std::array<uint8_t, 8> data, std::shared_ptr<Action> prevAction);
+        RunComplete Update() override;
+};
+
+class ActionHold : public Action {
+    public:
+        ActionHold() = default ;
+        void Initialize(std::array<uint8_t, 8> data, std::shared_ptr<Action> prevAction);
+        RunComplete Update() override;
+    private:
+        uint32_t time;
+        std::shared_ptr<Action> prevAction;
+};
+
+
 #include <queue>
-std::queue<Action> MessageQueue;
+#include <map>
+#include <memory>
+#include <functional>
+extern std::queue<std::shared_ptr<Action>> MessageQueue;
+
+using CreateHandlerFunc = std::shared_ptr<Action>(*)();
+
+class ActionFactory {
+public:
+    void RegisterAction(uint8_t command, std::function<std::shared_ptr<Action>()> createFunc);
+    std::shared_ptr<Action> GetAction(uint8_t command);
+private:
+    std::map<uint8_t, std::function<std::shared_ptr<Action>()>> actions;
+};
 
 #endif

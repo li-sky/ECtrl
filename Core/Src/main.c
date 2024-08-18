@@ -195,10 +195,10 @@ int main(void)
   MX_CRC_Init();
   /* USER CODE BEGIN 2 */
   printf("SysInit...\r\n");
-  xTaskCreate(vCanManageTaskFunction, "CanManageTask", 512, NULL, 2, &vCanManageTaskFunctionHandle);
-  xTaskCreate(vStoreManageFunction, "StoreManageTask", 512, NULL, 2, &vStoreManageFunctionHandle);
-  xTaskCreate(vMotorControlFunction, "MotorControlTask", 1024, NULL, 1, &vMotorControlFunctionHandle);
-  xTaskCreate(vADCManageFunction, "ADCManageTask", 128, NULL, 1, &vADCManageFunctionHandle);
+  xTaskCreate(vCanManageTaskFunction, "CanManageTask", 2048, NULL, 2, &vCanManageTaskFunctionHandle);
+  xTaskCreate(vStoreManageFunction, "StoreManageTask", 2048, NULL, 2, &vStoreManageFunctionHandle);
+  xTaskCreate(vMotorControlFunction, "MotorControlTask", 2048, NULL, 1, &vMotorControlFunctionHandle);
+  xTaskCreate(vADCManageFunction, "ADCManageTask", 2048, NULL, 1, &vADCManageFunctionHandle);
 	vTaskStartScheduler();
   /* USER CODE END 2 */
 

@@ -7,12 +7,15 @@
 #include "TaskCanManage.h"
 #include "TaskStateManage.h"
 
-#include "iostream"
 #include "string"
 extern CAN_HandleTypeDef hcan;
+extern TIM_HandleTypeDef htim1, htim8;
 CAN_FilterTypeDef Filter;
 TaskHandle_t vCanSendTaskHandle;
 CAN_TxHeaderTypeDef Header;
+
+std::queue<std::shared_ptr<Action>> MessageQueue;
+std::shared_ptr<Action> CurrentAction;
 
 static QueueHandle_t canRecvMsgQueue;
 extern "C" {
@@ -72,20 +75,75 @@ void vCanSendTaskFunction( void *pvParameters ) {
 	}
 }
 
-void vCanManageTaskFunction( void *pvParameters ) {
-	(void) pvParameters;
+ActionFactory actionFactory;
 
-	MessageHandlerFactory factory;
-	factory.RegisterHandler(0x00, std::make_shared<ReadStateMessageHandler>());
-	factory.RegisterHandler(0x01, std::make_shared<WriteStateMessageHandler>());
-	factory.RegisterHandler(0x02, std::make_shared<AddToQueueMessageHandler>());
-	factory.RegisterHandler(0x03, std::make_shared<ClearQueueMessageHandler>());
-	factory.RegisterHandler(0x04, std::make_shared<PopQueueMessageHandler>());
-	factory.RegisterHandler(0x06, std::make_shared<DirectOperationMessageHandler>());
+void registerActions() {
+	// actionFactory.RegisterAction(0x00, []() -> std::shared_ptr<Action> {
+    //     return std::make_shared<ActionStraightWithDesignatedTime>();
+    // });	
+	// actionFactory.RegisterAction(0x01, []() -> std::shared_ptr<Action> {
+	// 	return std::make_shared<ActionStraightWithDesignatedDistance>();
+	// });
+	//actionFactory.RegisterAction(0x02, []() -> std::shared_ptr<Action> {
+	//	return std::make_shared<ActionStraight>();
+	//});
+	// actionFactory.RegisterAction(0x03, []() -> std::shared_ptr<Action> {
+	// 	return std::make_shared<ActionNeutralRotateWithDesignatedAngle>();
+	// });
+	// actionFactory.RegisterAction(0x04, []() -> std::shared_ptr<Action> {
+	// 	return std::make_shared<ActionNeutralRotateWithDesignatedTime>();
+	// });
+	// actionFactory.RegisterAction(0x05, []() -> std::shared_ptr<Action> {
+	// 	return std::make_shared<ActionNeutralRotate>();
+	// });
+	// actionFactory.RegisterAction(0x06, []() -> std::shared_ptr<Action> {
+	// 	return std::make_shared<ActionPivotTurnWithDesignatedAngle>();
+	// });
+	// actionFactory.RegisterAction(0x07, []() -> std::shared_ptr<Action> {
+	// 	return std::make_shared<ActionPivotTurnWithDesignatedTime>();
+	// });
+	// actionFactory.RegisterAction(0x08, []() -> std::shared_ptr<Action> {
+	// 	return std::make_shared<ActionPivotTurn>();
+	// });
+	// actionFactory.RegisterAction(0x09, []() -> std::shared_ptr<Action> {
+	// 	return std::make_shared<ActionPowerTurnWithDesignatedAngle>();
+	// });
+	// actionFactory.RegisterAction(0x0A, []() -> std::shared_ptr<Action> {
+	// 	return std::make_shared<ActionPowerTurnWithDesignatedTime>();
+	// });
+	// actionFactory.RegisterAction(0x0B, []() -> std::shared_ptr<Action> {
+	// 	return std::make_shared<ActionPowerTurn>();
+	// });
+	actionFactory.RegisterAction(0x0C, []() -> std::shared_ptr<Action> {
+		return std::make_shared<ActionWritePWMValues>();
+	});
+	actionFactory.RegisterAction(0x0D, []() -> std::shared_ptr<Action> {
+		return std::make_shared<ActionWriteTargetEncoderValues>();
+	});
+	// actionFactory.RegisterAction(0x0E, []() -> std::shared_ptr<Action> {
+	// 	return std::make_shared<ActionFastDecay>();
+	// });
+	// actionFactory.RegisterAction(0x0F, []() -> std::shared_ptr<Action> {
+	// 	return std::make_shared<ActionSlowDecay>();
+	// });
+	actionFactory.RegisterAction(0x10, []() -> std::shared_ptr<Action> {
+		return std::make_shared<ActionStop>();
+	});
+	actionFactory.RegisterAction(0x11, []() -> std::shared_ptr<Action> {
+		return std::make_shared<ActionHold>();
+	});
+}
 
-	canRecvMsgQueue = xQueueCreate(10, sizeof(CANMsg));
-	// CAN Filter setup
-	printf("Starting Can Manager....\r\n");
+void registerCommands(MessageHandlerFactory *factory) {
+	factory->RegisterHandler(0x00, std::make_shared<ReadStateMessageHandler>());
+	factory->RegisterHandler(0x01, std::make_shared<WriteStateMessageHandler>());
+	factory->RegisterHandler(0x02, std::make_shared<AddToQueueMessageHandler>());
+	factory->RegisterHandler(0x03, std::make_shared<ClearQueueMessageHandler>());
+	factory->RegisterHandler(0x04, std::make_shared<PopQueueMessageHandler>());
+	factory->RegisterHandler(0x06, std::make_shared<DirectOperationMessageHandler>());
+}
+
+void SetupCANFilter() {
 	uint8_t canID = GetboardCANID();
 	Filter.FilterBank = 0;
 	Filter.FilterMode = CAN_FILTERMODE_IDMASK;
@@ -97,6 +155,18 @@ void vCanManageTaskFunction( void *pvParameters ) {
     Filter.FilterActivation = ENABLE;
 	Filter.FilterScale = CAN_FILTERSCALE_32BIT;
 	HAL_CAN_ConfigFilter(&hcan, &Filter);
+}
+
+void vCanManageTaskFunction( void *pvParameters ) {
+	(void) pvParameters;
+
+	MessageHandlerFactory factory;
+
+	registerActions();
+	registerCommands(&factory);
+	canRecvMsgQueue = xQueueCreate(10, sizeof(CANMsg));
+	SetupCANFilter();
+
 	HAL_CAN_Start(&hcan);
 	if (HAL_CAN_ActivateNotification(&hcan, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK)
 		Error_Handler();
@@ -134,6 +204,7 @@ ReadStateMessageHandler::ReadStateMessageHandler() {
 
 void ReadStateMessageHandler::Handler(const CANMsg& msg) {
 	bool paramFound = true;
+	float voltage = 0, kp = 0, ki = 0, kd = 0;
 	switch (msg.Data[0]) {
 		case 0x00: 
 			responseMsg.Data[0] = GetboardCANID();
@@ -170,7 +241,7 @@ void ReadStateMessageHandler::Handler(const CANMsg& msg) {
 			responseMsg.Data[0] = GetHostCANID();
 			break;
 		case 0x07:
-			float voltage = GetCurrentInputVoltage();
+			voltage = GetCurrentInputVoltage();
 			memcpy(responseMsg.Data, &voltage, sizeof(float));
 			break;
 		case 0x08:
@@ -180,21 +251,21 @@ void ReadStateMessageHandler::Handler(const CANMsg& msg) {
 		case 0x0A:
 		case 0x0B:
 		case 0x0C:
-			float kp = GetKp(msg.Data[0] - 0x09);
+			kp = GetKp(msg.Data[0] - 0x09);
 			memcpy(responseMsg.Data, &kp, sizeof(float));
 			break;
 		case 0x0D:
 		case 0x0E:
 		case 0x0F:
 		case 0x10:
-			float ki = GetKi(msg.Data[0] - 0x0D);
+			ki = GetKi(msg.Data[0] - 0x0D);
 			memcpy(responseMsg.Data, &ki, sizeof(float));
 			break;
 		case 0x11:
 		case 0x12:
 		case 0x13:	
 		case 0x14:
-			float kd = GetKd(msg.Data[0] - 0x11);
+			kd = GetKd(msg.Data[0] - 0x11);
 			memcpy(responseMsg.Data, &kd, sizeof(float));
 			break;
 		default:
@@ -223,6 +294,7 @@ void WriteStateMessageHandler::Handler(const CANMsg& msg) {
 	switch (msg.Param) {
 		case 0x00:
 			SetBoardCANID(msg.Data[0]);
+			SetupCANFilter();
 			break;
 		case 0x01:
 			SetRunMode(msg.Data[0]);
@@ -233,6 +305,14 @@ void WriteStateMessageHandler::Handler(const CANMsg& msg) {
 		case 0x05:
 			SetPWMPSC((msg.Data[0] << 8) + msg.Data[1]);
 			SetPWMARR((msg.Data[2] << 8) + msg.Data[3]);
+			htim1.Init.Prescaler = GetPWMPSC() - 1;
+			htim1.Init.Period = GetPWMARR() - 1;
+			HAL_TIM_Base_Init(&htim1);
+			HAL_TIM_Base_Start(&htim1);
+			htim8.Init.Prescaler = GetPWMPSC() - 1;
+			htim8.Init.Period = GetPWMARR() - 1;
+			HAL_TIM_Base_Init(&htim8);
+			HAL_TIM_Base_Start(&htim8);
 			break;
 		case 0x06:
 			SetHostCANID(msg.Data[0]);
@@ -267,8 +347,17 @@ AddToQueueMessageHandler::AddToQueueMessageHandler() {
 }
 
 void AddToQueueMessageHandler::Handler(const CANMsg& msg) {
-	
+	std::array <uint8_t, 8> data;
+	std::copy(msg.Data, msg.Data+8, std::begin(data));
+	auto action = actionFactory.GetAction(msg.Param);
+	if (action) {
+		SetRunMode(0x02);
+		action->Initialize(data, MessageQueue.empty() ? nullptr : MessageQueue.back());
+		MessageQueue.push(action);
+		SetQueueLength(MessageQueue.size());
+	}
 }
+
 
 // ClearQueueMessageHandler implementation
 ClearQueueMessageHandler::ClearQueueMessageHandler() {
@@ -277,6 +366,13 @@ ClearQueueMessageHandler::ClearQueueMessageHandler() {
 }
 
 void ClearQueueMessageHandler::Handler(const CANMsg& msg) {
+	(void) msg;
+	while (!MessageQueue.empty()) {
+		MessageQueue.pop();
+	}
+	if (GetRunMode() != 0x01) {
+		SetRunMode(0x00);
+	}
 }
 
 // PopQueueMessageHandler implementation
@@ -286,6 +382,11 @@ PopQueueMessageHandler::PopQueueMessageHandler() {
 }
 
 void PopQueueMessageHandler::Handler(const CANMsg& msg) {
+	(void) msg;
+	if (!MessageQueue.empty()) {
+		CurrentAction = MessageQueue.front();
+		MessageQueue.pop();
+	}
 }
 
 // DirectOperationMessageHandler implementation
@@ -295,4 +396,16 @@ DirectOperationMessageHandler::DirectOperationMessageHandler() {
 }
 
 void DirectOperationMessageHandler::Handler(const CANMsg& msg) {
+	// pop all queue first
+	while (!MessageQueue.empty()) {
+		MessageQueue.pop();
+	}
+	std::array <uint8_t, 8> data;
+	std::copy(msg.Data, msg.Data+8, std::begin(data));
+	auto action = actionFactory.GetAction(msg.Param);
+	if (action) {
+		action->Initialize(data, nullptr);
+		CurrentAction = action;
+		SetRunMode(0x01);
+	}
 }

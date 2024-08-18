@@ -21,6 +21,11 @@ void TransmitCanMessage( uint8_t targetID, uint8_t sourceID, uint8_t param, uint
 #include "string"
 #include "map"
 #include "memory"
+#include "TaskStateManage.h"
+
+extern std::shared_ptr<Action> CurrentAction;
+extern ActionFactory actionFactory;
+extern std::queue<std::shared_ptr<Action>> MessageQueue;
 
 class BaseMessageHandler {
 	public:

@@ -9,7 +9,7 @@
 
 #define FLASH_ERASE_NO_ERR 0xFFFFFFFF
 
-static const uint32_t* storageAddress = 0x0807F800;
+static const uint32_t* storageAddress = (uint32_t*)0x0807F800;
 extern CRC_HandleTypeDef hcrc;
 
 static uint8_t ParamReady = 0;
@@ -58,7 +58,7 @@ static void InitGlobalParamV() {
 static void UpdateNVParamToFlash(uint32_t crc) {
     FLASH_EraseInitTypeDef EraseInitStruct;
     EraseInitStruct.TypeErase = FLASH_TYPEERASE_PAGES;
-    EraseInitStruct.PageAddress = storageAddress;
+    EraseInitStruct.PageAddress = (uint32_t) storageAddress;
     EraseInitStruct.NbPages = 1;
     uint32_t err;
     HAL_FLASHEx_Erase(&EraseInitStruct, &err);
@@ -67,19 +67,20 @@ static void UpdateNVParamToFlash(uint32_t crc) {
         printf("Error Erasing Flash!\r\n");
         return;
     }
-    HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, storageAddress, crc);
+    HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, (uint32_t) storageAddress, crc);
     for (uint32_t current = 0; current < sizeof(GlobalParam_NV) / 2; current++) {
-        HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, storageAddress + current + 1, *(((uint32_t*) &(GlobalParam_NV)) + current));
+        HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, (uint32_t) (storageAddress + current + 1), *(((uint32_t*) &(GlobalParam_NV)) + current));
     }
 }
 
 void vStoreManageFunction ( void *pvParameters ) {
+    (void) pvParameters;
     InitGlobalParamV();
     printf("Unlocking Flash...\r\n");
     HAL_FLASH_Unlock();
     // Read from storage address and make sure there data is not corrupted in flash area.
     printf("Initiating CRC Check...\r\n");
-    uint32_t crc_result = HAL_CRC_Calculate(&hcrc, storageAddress + 1, sizeof(GlobalParam_NV) / 4);
+    uint32_t crc_result = HAL_CRC_Calculate(&hcrc, (uint32_t*) (storageAddress + 1), sizeof(GlobalParam_NV) / 4);
     printf("CRC Calculation Complete, result = %lx\r\n", crc_result);
     // If CRC is valid, then data is not corrupted.
     if (crc_result == *storageAddress)
@@ -91,7 +92,7 @@ void vStoreManageFunction ( void *pvParameters ) {
         // CRC Check Fail
         printf("CRC Check Fail, data is corrupted. Resetting...\r\n");
         InitGlobalParamNV();
-        uint32_t crc_result_2 = HAL_CRC_Calculate(&hcrc, &GlobalParam_NV, sizeof(GlobalParam_NV) / 4);
+        uint32_t crc_result_2 = HAL_CRC_Calculate(&hcrc, (uint32_t*)&GlobalParam_NV, sizeof(GlobalParam_NV) / 4);
         UpdateNVParamToFlash(crc_result_2);
     }
     ParamReady = 1;
@@ -106,7 +107,7 @@ uint8_t GetboardCANID() {
 void SetBoardCANID(uint8_t newCANID) {
     waitReady();
     GlobalParam_NV.boardCANID = newCANID;
-    uint32_t crc_result = HAL_CRC_Calculate(&hcrc, &GlobalParam_NV, sizeof(GlobalParam_NV) / 4);
+    uint32_t crc_result = HAL_CRC_Calculate(&hcrc, (uint32_t*)&GlobalParam_NV, sizeof(GlobalParam_NV) / 4);
     UpdateNVParamToFlash(crc_result);
 }
 
@@ -118,14 +119,14 @@ uint8_t GetHostCANID() {
 void SetHostCANID(uint8_t newCANID) {
     waitReady();
     GlobalParam_NV.hostCANID = newCANID;
-    uint32_t crc_result = HAL_CRC_Calculate(&hcrc, &GlobalParam_NV, sizeof(GlobalParam_NV) / 4);
+    uint32_t crc_result = HAL_CRC_Calculate(&hcrc, (uint32_t*)&GlobalParam_NV, sizeof(GlobalParam_NV) / 4);
     UpdateNVParamToFlash(crc_result);
 }
 
 void SetPWMPSC(uint16_t PSC) {
     waitReady();
     GlobalParam_NV.PWMPSC = PSC;
-    uint32_t crc_result = HAL_CRC_Calculate(&hcrc, &GlobalParam_NV, sizeof(GlobalParam_NV) / 4);
+    uint32_t crc_result = HAL_CRC_Calculate(&hcrc, (uint32_t*)&GlobalParam_NV, sizeof(GlobalParam_NV) / 4);
     UpdateNVParamToFlash(crc_result);
 }
 
@@ -137,7 +138,7 @@ uint16_t GetPWMPSC() {
 void SetPWMARR(uint16_t ARR) {
     waitReady();
     GlobalParam_NV.PWMARR = ARR;
-    uint32_t crc_result = HAL_CRC_Calculate(&hcrc, &GlobalParam_NV, sizeof(GlobalParam_NV) / 4);
+    uint32_t crc_result = HAL_CRC_Calculate(&hcrc, (uint32_t*)&GlobalParam_NV, sizeof(GlobalParam_NV) / 4);
     UpdateNVParamToFlash(crc_result);
 }
 
