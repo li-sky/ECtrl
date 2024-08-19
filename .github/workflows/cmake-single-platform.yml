@@ -40,4 +40,6 @@ jobs:
       uses: actions/upload-artifact@v4.3.6
       with:
         name: Release
-        path: build/*/ECtrl.*
+        path: |
+          ECtrl.*
+
