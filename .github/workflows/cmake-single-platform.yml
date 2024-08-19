@@ -10,7 +10,7 @@ on:
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
-  BUILD_TYPE: Release
+  BUILD_TYPE: Release, Debug
 
 jobs:
   build:
@@ -36,3 +36,7 @@ jobs:
       # Build your program with the given configuration
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
 
+    - name: Upload a Build Artifact
+      uses: actions/upload-artifact@v4.3.6
+      with:
+        path: build/*/ECtrl.*
