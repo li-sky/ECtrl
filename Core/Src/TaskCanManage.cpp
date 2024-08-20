@@ -175,7 +175,7 @@ void vCanManageTaskFunction( void *pvParameters ) {
 	CANMsg message;
 	while (1) {
 		if (xQueueReceive(canRecvMsgQueue, &message, portMAX_DELAY) == pdTRUE) {
-			auto handler = factory.GetHandler(message.Param);
+			auto handler = factory.GetHandler(message.OpType);
 			if (handler) {
 				handler->Handler(message);
 			}
