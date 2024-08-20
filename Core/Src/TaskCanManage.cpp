@@ -71,6 +71,7 @@ void vCanSendTaskFunction( void *pvParameters ) {
 		message.Data[5] = currentTime >> 16;
 		message.Data[6] = currentTime >> 8;
 		message.Data[7] = currentTime;
+		TransmitCanMessage(&message);
 		vTaskDelay(1000);
 	}
 }

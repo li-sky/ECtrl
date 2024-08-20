@@ -42,6 +42,7 @@ void writePWMValue(uint8_t index, int16_t speed) {
         HAL_TIMEx_PWMN_Start(htim, TIM_CHANNEL);
         HAL_TIM_PWM_Stop(htim, TIM_CHANNEL);
     }
+    printf("Set PWM Value: index = %d, speed = %d\n", index, speed);
 }
 
 
@@ -65,9 +66,11 @@ void ActionWritePWMValues::Initialize(std::array<uint8_t, 8> data, std::shared_p
     speed[1] = (data[2] << 8) | data[3];
     speed[2] = (data[4] << 8) | data[5];
     speed[3] = (data[6] << 8) | data[7];
+    printf("Action Init: Write PWM Values: %d %d %d %d\n", speed[0], speed[1], speed[2], speed[3]);
 }
 
 RunComplete ActionWritePWMValues::Update() {
+    printf("Action Update: Write PWM Values");
     return true;
 }
 
@@ -81,6 +84,7 @@ void ActionWriteTargetEncoderValues::Initialize(std::array<uint8_t, 8> data, std
         difference[i] = 0;
         integral[i] = 0;
     }
+    printf("Action Init: Write Target Encoder Values: %d %d %d %d\n", speed[0], speed[1], speed[2], speed[3]);
 }
 
 RunComplete ActionWriteTargetEncoderValues::Update() {
@@ -89,12 +93,14 @@ RunComplete ActionWriteTargetEncoderValues::Update() {
         integral[i] += difference[i];
         writePWMValue(i, GetKp(i) * difference[i] + GetKi(i) * integral[i] + GetKd(i) * (difference[i] - difference[i]));
     }
+    printf("Action Update: Write Target Encoder Values\n");
     return true;
 } 
 
 void ActionHold::Initialize(std::array<uint8_t, 8> data, std::shared_ptr<Action> prevAction) {
     time = (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3];
     this->prevAction = prevAction;
+    printf("Action Init: Hold: %ld\n", time);
 }
 
 RunComplete ActionHold::Update() {
@@ -103,15 +109,18 @@ RunComplete ActionHold::Update() {
     }
     prevAction->Update();
     time-=updateDelay;
+    printf("Action Update: Hold: %ld\n", time);
     return false;
 }
 
 void ActionStop::Initialize(std::array<uint8_t, 8> data, std::shared_ptr<Action> prevAction) {
     (void) prevAction;
     (void) data;
+    printf("Action Init: Stop\n");
 }
 
 RunComplete ActionStop::Update() {
+    printf("Action Update: Stop\n");
     HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_1);
     HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_3);
     HAL_TIM_PWM_Stop(&htim8, TIM_CHANNEL_1);

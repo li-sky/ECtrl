@@ -19,7 +19,7 @@ void UpdateEncoderValue() {
     __HAL_TIM_SET_COUNTER(&htim3, 0);
     __HAL_TIM_SET_COUNTER(&htim4, 0);
     __HAL_TIM_SET_COUNTER(&htim5, 0);
-    printf("Encoder Value: %d %d %d %d\n", GetWheelSpeed(0), GetWheelSpeed(1), GetWheelSpeed(2), GetWheelSpeed(3));
+    //printf("Encoder Value: %d %d %d %d\n", GetWheelSpeed(0), GetWheelSpeed(1), GetWheelSpeed(2), GetWheelSpeed(3));
 }
 
 void vMotorControlFunction( void * pvParameters ) {
