@@ -45,8 +45,8 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
         Error_Handler();
     } else {
 		CANMsg msg;
-		msg.SourceID = rxHeader.ExtId & 0x000000ff;
-		msg.TargetID = (rxHeader.ExtId >> 8) & 0x000000ff;
+		msg.TargetID = rxHeader.ExtId & 0x000000ff;
+		msg.SourceID = (rxHeader.ExtId >> 8) & 0x000000ff;
 		msg.Param = (rxHeader.ExtId >> 16) & 0x000000ff;
 		msg.OpType = (rxHeader.ExtId >> 24) & 0x0000001f;
 		memcpy(msg.Data, rxData, 8);
