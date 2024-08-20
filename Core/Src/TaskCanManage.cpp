@@ -206,6 +206,7 @@ ReadStateMessageHandler::ReadStateMessageHandler() {
 void ReadStateMessageHandler::Handler(const CANMsg& msg) {
 	bool paramFound = true;
 	float voltage = 0, kp = 0, ki = 0, kd = 0;
+	printf("MsgHandler: %s, MessageSource: %x, MessageTarget: %x\n", MessageHandlerID.c_str(), msg.SourceID, msg.TargetID);
 	switch (msg.Data[0]) {
 		case 0x00: 
 			responseMsg.Data[0] = GetboardCANID();
@@ -292,6 +293,7 @@ WriteStateMessageHandler::WriteStateMessageHandler() {
 }
 
 void WriteStateMessageHandler::Handler(const CANMsg& msg) {
+	printf("MsgHandler: %s, MessageSource: %x, MessageTarget: %x\n", MessageHandlerID.c_str(), msg.SourceID, msg.TargetID);
 	switch (msg.Param) {
 		case 0x00:
 			SetBoardCANID(msg.Data[0]);
@@ -348,6 +350,7 @@ AddToQueueMessageHandler::AddToQueueMessageHandler() {
 }
 
 void AddToQueueMessageHandler::Handler(const CANMsg& msg) {
+	printf("MsgHandler: %s, MessageSource: %x, MessageTarget: %x\n", MessageHandlerID.c_str(), msg.SourceID, msg.TargetID);
 	std::array <uint8_t, 8> data;
 	std::copy(msg.Data, msg.Data+8, std::begin(data));
 	auto action = actionFactory.GetAction(msg.Param);
@@ -367,6 +370,7 @@ ClearQueueMessageHandler::ClearQueueMessageHandler() {
 }
 
 void ClearQueueMessageHandler::Handler(const CANMsg& msg) {
+	printf("MsgHandler: %s, MessageSource: %x, MessageTarget: %x\n", MessageHandlerID.c_str(), msg.SourceID, msg.TargetID);
 	(void) msg;
 	while (!MessageQueue.empty()) {
 		MessageQueue.pop();
@@ -383,6 +387,7 @@ PopQueueMessageHandler::PopQueueMessageHandler() {
 }
 
 void PopQueueMessageHandler::Handler(const CANMsg& msg) {
+	printf("MsgHandler: %s, MessageSource: %x, MessageTarget: %x\n", MessageHandlerID.c_str(), msg.SourceID, msg.TargetID);
 	(void) msg;
 	if (!MessageQueue.empty()) {
 		CurrentAction = MessageQueue.front();
@@ -397,6 +402,7 @@ DirectOperationMessageHandler::DirectOperationMessageHandler() {
 }
 
 void DirectOperationMessageHandler::Handler(const CANMsg& msg) {
+	printf("MsgHandler: %s, MessageSource: %x, MessageTarget: %x\n", MessageHandlerID.c_str(), msg.SourceID, msg.TargetID);
 	// pop all queue first
 	while (!MessageQueue.empty()) {
 		MessageQueue.pop();
