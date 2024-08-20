@@ -71,6 +71,9 @@ void ActionWritePWMValues::Initialize(std::array<uint8_t, 8> data, std::shared_p
 
 RunComplete ActionWritePWMValues::Update() {
     printf("Action Update: Write PWM Values");
+    for (int i = 0; i < 4; i++) {
+        writePWMValue(i, speed[i]);
+    }
     return true;
 }
 
