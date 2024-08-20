@@ -18,4 +18,4 @@ jobs:
           url: 'https://www.feishu.cn/flow/api/trigger-webhook/0d902a196b01c011051a2dc7960b2477'
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"repo_name": ${{ env.GITHUB_REPOSITORY }}, "source": "https://github.com/${{ env.GITHUB_REPOSITORY }}"}'
+          data: '{"repo_name": "ECtrl", "source": "https://github.com/li-sky/ECtrl"}'
